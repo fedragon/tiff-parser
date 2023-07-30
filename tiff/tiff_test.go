@@ -102,26 +102,32 @@ func Test_ParseMagicNumber(t *testing.T) {
 	}
 }
 
-func TestParseCreatedAt_CR2(t *testing.T) {
+func TestParseDateTimeOriginal_CR2(t *testing.T) {
 	r, err := os.Open("../test/data/image.cr2")
 	defer r.Close()
 	assert.NoError(t, err)
 
-	date, _, err := ParseOriginalDatetime(r)
-
+	p, err := NewParser(r)
 	if assert.NoError(t, err) {
-		assert.Equal(t, time.Date(2021, 11, 19, 12, 21, 10, 0, time.UTC), date)
+		date, found, err := p.ParseOriginalDatetime()
+		if assert.NoError(t, err) {
+			assert.True(t, found)
+			assert.Equal(t, time.Date(2021, 11, 19, 12, 21, 10, 0, time.UTC), date)
+		}
 	}
 }
 
-func TestParseCreatedAt_ORF(t *testing.T) {
+func TestParseDateTimeOriginal_ORF(t *testing.T) {
 	r, err := os.Open("../test/data/image.orf")
 	defer r.Close()
 	assert.NoError(t, err)
 
-	date, _, err := ParseOriginalDatetime(r)
-
+	p, err := NewParser(r)
 	if assert.NoError(t, err) {
-		assert.Equal(t, time.Date(2016, 8, 12, 13, 32, 54, 0, time.UTC), date)
+		date, found, err := p.ParseOriginalDatetime()
+		if assert.NoError(t, err) {
+			assert.True(t, found)
+			assert.Equal(t, time.Date(2016, 8, 12, 13, 32, 54, 0, time.UTC), date)
+		}
 	}
 }
