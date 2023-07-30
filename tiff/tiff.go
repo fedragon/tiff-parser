@@ -297,3 +297,22 @@ func (p *Parser) ReadUints32(entry entry.Entry) ([]uint32, error) {
 
 	return res, nil
 }
+
+func (p *Parser) ReadURational(entry entry.Entry) (uint32, uint32, error) {
+	if entry.DataType != 5 {
+		return 0, 0, errors.New("entry is not a rational")
+	}
+
+	if _, err := p.reader.Seek(int64(entry.Value), io.SeekStart); err != nil {
+		return 0, 0, err
+	}
+
+	buffer := make([]byte, 8)
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return 0, 0, err
+	}
+	numerator := p.byteOrder.Uint32(buffer[0:4])
+	denominator := p.byteOrder.Uint32(buffer[4:8])
+
+	return numerator, denominator, nil
+}

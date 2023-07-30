@@ -111,7 +111,7 @@ func TestParse_CR2(t *testing.T) {
 	p, err := NewParser(r)
 	assert.NoError(t, err)
 
-	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal)
+	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal, entry.ExposureTime)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
@@ -135,6 +135,11 @@ func TestParse_CR2(t *testing.T) {
 	dateTime, err := p.ReadString(entries[entry.DateTimeOriginal])
 	assert.NoError(t, err)
 	assert.EqualValues(t, "2021:11:19 12:21:10", dateTime)
+
+	num, den, err := p.ReadURational(entries[entry.ExposureTime])
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, num)
+	assert.EqualValues(t, 40, den)
 }
 
 func TestParse_ORF(t *testing.T) {
@@ -145,7 +150,7 @@ func TestParse_ORF(t *testing.T) {
 	p, err := NewParser(r)
 	assert.NoError(t, err)
 
-	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal)
+	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal, entry.ExposureTime)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
@@ -165,6 +170,11 @@ func TestParse_ORF(t *testing.T) {
 	make_, err := p.ReadString(entries[entry.Make])
 	assert.NoError(t, err)
 	assert.EqualValues(t, "OLYMPUS CORPORATION    ", make_)
+
+	num, den, err := p.ReadURational(entries[entry.ExposureTime])
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, num)
+	assert.EqualValues(t, 200, den)
 
 	dateTime, err := p.ReadString(entries[entry.DateTimeOriginal])
 	assert.NoError(t, err)
