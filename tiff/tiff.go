@@ -18,6 +18,7 @@ type Parser struct {
 	mapping   map[entry.ID]Group
 }
 
+// NewParser returns a new parser or an error if the content is not a valid TIFF.
 func NewParser(r io.ReadSeeker) (*Parser, error) {
 	header := make([]byte, 8) // only read the TIFF header
 	_, err := io.ReadFull(r, header)
@@ -44,6 +45,7 @@ func NewParser(r io.ReadSeeker) (*Parser, error) {
 	}, nil
 }
 
+// WithMapping adds entry mapping(s) to the parser
 func (p *Parser) WithMapping(m map[entry.ID]Group) *Parser {
 	for k, v := range m {
 		p.mapping[k] = v
@@ -52,6 +54,7 @@ func (p *Parser) WithMapping(m map[entry.ID]Group) *Parser {
 	return p
 }
 
+// Parse parses the TIFF file, returning any entry found in it or an error if the read fails.
 func (p *Parser) Parse(ids ...entry.ID) (map[entry.ID]entry.Entry, error) {
 	entries := make(map[entry.ID]entry.Entry)
 	ifd0Wanted := newWanted()
@@ -192,7 +195,6 @@ func (p *Parser) collect(wanted *wanted) (map[entry.ID]entry.Entry, error) {
 			}
 		}
 
-		// No point in scanning the IFD further: if we've already found all desired IDs, we're done; if not, we're not going to find them further anyway
 		if id >= wanted.Max() {
 			break
 		}
@@ -242,17 +244,16 @@ func (p *Parser) ReadUints16(entry entry.Entry) ([]uint16, error) {
 	}
 
 	res := make([]uint16, entry.Length)
-
 	if _, err := p.reader.Seek(int64(entry.Value), io.SeekStart); err != nil {
 		return nil, err
 	}
 
+	buffer := make([]byte, 2*entry.Length)
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return nil, err
+	}
 	for i := 0; i < int(entry.Length); i++ {
-		buffer := make([]byte, 2)
-		if _, err := io.ReadFull(p.reader, buffer); err != nil {
-			return nil, err
-		}
-		res[i] = p.byteOrder.Uint16(buffer)
+		res[i] = p.byteOrder.Uint16(buffer[i*2 : i*2+2])
 	}
 
 	return res, nil
@@ -282,17 +283,19 @@ func (p *Parser) ReadUints32(entry entry.Entry) ([]uint32, error) {
 	}
 
 	res := make([]uint32, entry.Length)
-
 	if _, err := p.reader.Seek(int64(entry.Value), io.SeekStart); err != nil {
 		return nil, err
 	}
 
+	size := 4
+
+	buffer := make([]byte, size*int(entry.Length))
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return nil, err
+	}
+
 	for i := 0; i < int(entry.Length); i++ {
-		buffer := make([]byte, 4)
-		if _, err := io.ReadFull(p.reader, buffer); err != nil {
-			return nil, err
-		}
-		res[i] = p.byteOrder.Uint32(buffer)
+		res[i] = p.byteOrder.Uint32(buffer[i*size : i*size+size])
 	}
 
 	return res, nil
@@ -311,6 +314,7 @@ func (p *Parser) ReadURational(entry entry.Entry) (uint32, uint32, error) {
 	if _, err := io.ReadFull(p.reader, buffer); err != nil {
 		return 0, 0, err
 	}
+
 	numerator := p.byteOrder.Uint32(buffer[0:4])
 	denominator := p.byteOrder.Uint32(buffer[4:8])
 

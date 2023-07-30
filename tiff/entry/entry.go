@@ -31,5 +31,6 @@ const (
 
 	// GPSInfo sub-IFD
 
-	GPSLatitudeRef = 0x0001
+	GPSLatitude  = 0x0002
+	GPSLongitude = 0x0004
 )

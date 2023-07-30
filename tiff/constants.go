@@ -40,5 +40,6 @@ var Defaults = map[entry.ID]Group{
 	entry.FNumber:            GroupExif,
 	entry.DateTimeOriginal:   GroupExif,
 	entry.OffsetTimeOriginal: GroupExif,
-	entry.GPSLatitudeRef:     GroupGPSInfo,
+	entry.GPSLatitude:        GroupGPSInfo,
+	entry.GPSLongitude:       GroupGPSInfo,
 }
