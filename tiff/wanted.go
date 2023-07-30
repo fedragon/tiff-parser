@@ -2,13 +2,13 @@ package tiff
 
 // wanted represents a set of Entry IDs
 type wanted struct {
-	ids map[uint16]struct{}
-	max uint16
+	ids map[EntryID]struct{}
+	max EntryID
 }
 
-func newWanted(ids ...uint16) *wanted {
+func newWanted(ids ...EntryID) *wanted {
 	we := wanted{
-		ids: map[uint16]struct{}{},
+		ids: map[EntryID]struct{}{},
 	}
 	for _, id := range ids {
 		we.Put(id)
@@ -17,18 +17,18 @@ func newWanted(ids ...uint16) *wanted {
 	return &we
 }
 
-func (we *wanted) Put(id uint16) {
+func (we *wanted) Put(id EntryID) {
 	we.ids[id] = struct{}{}
 	if id > we.max {
 		we.max = id
 	}
 }
 
-func (we *wanted) Contains(id uint16) bool {
+func (we *wanted) Contains(id EntryID) bool {
 	_, ok := we.ids[id]
 	return ok
 }
 
-func (we *wanted) Max() uint16 {
+func (we *wanted) Max() EntryID {
 	return we.max
 }

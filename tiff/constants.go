@@ -1,5 +1,7 @@
 package tiff
 
+type EntryID uint16
+
 const (
 	// IntelByteOrder is the TIFF standard value to indicate Intel byte ordering (aka little-endian)
 	IntelByteOrder = 0x4949
@@ -16,11 +18,7 @@ const (
 	// OrfMagicNumberLittleEndian is the ORF-specific value to indicate little-endian byte ordering
 	OrfMagicNumberLittleEndian = 0x524F
 
-	// ExifOffsetId is the offset ID of the EXIF Sub-IFD
-	ExifOffsetId = 0x8769
-
-	// dateTimeOriginal is the Datetime when original photo was taken
-	dateTimeOriginal = 0x9003
-	// offsetTimeOriginal is the name of dateTimeOriginal's timezone (e.g. Europe/Amsterdam)
-	offsetTimeOriginal = 0x9011
+	ExifOffset         EntryID = 0x8769
+	DateTimeOriginal   EntryID = 0x9003
+	OffsetTimeOriginal EntryID = 0x9011
 )

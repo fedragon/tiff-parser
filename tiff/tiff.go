@@ -11,7 +11,7 @@ import (
 
 // Entry represents an IFD entry
 type Entry struct {
-	ID       uint16
+	ID       EntryID
 	DataType uint16
 	Length   uint32
 	Value    uint32 // value of the entry or byte offset to read the value from, depending on the DataType and Length
@@ -75,24 +75,24 @@ func validateMagicNumber(byteOrder binary.ByteOrder, buffer []byte) error {
 
 // readOriginalDateTime reads and returns the original date/time from the EXIF subdirectory of IFD#0. It also reads and uses the timezone offset, if available.
 func readOriginalDateTime(byteOrder binary.ByteOrder, r io.ReadSeeker, offset int64) (time.Time, error) {
-	entries, err := collectIFDEntries(byteOrder, r, offset, newWanted(ExifOffsetId))
+	entries, err := collectIFDEntries(byteOrder, r, offset, newWanted(ExifOffset))
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	exifOffset, ok := entries[ExifOffsetId]
+	exifOffset, ok := entries[ExifOffset]
 	if !ok {
 		return time.Time{}, errors.New("no exif data")
 	}
 
-	entries, err = collectIFDEntries(byteOrder, r, int64(exifOffset.Value), newWanted(dateTimeOriginal, offsetTimeOriginal))
+	entries, err = collectIFDEntries(byteOrder, r, int64(exifOffset.Value), newWanted(DateTimeOriginal, OffsetTimeOriginal))
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	dateTimeOriginal, ok := entries[dateTimeOriginal]
+	dateTimeOriginal, ok := entries[DateTimeOriginal]
 	if !ok {
-		return time.Time{}, errors.New("dateTimeOriginal not found")
+		return time.Time{}, errors.New("DateTimeOriginal not found")
 	}
 
 	dateTimeString, err := readString(dateTimeOriginal, r)
@@ -105,7 +105,7 @@ func readOriginalDateTime(byteOrder binary.ByteOrder, r io.ReadSeeker, offset in
 		return time.Time{}, err
 	}
 
-	offsetTime, ok := entries[offsetTimeOriginal]
+	offsetTime, ok := entries[OffsetTimeOriginal]
 	if !ok {
 		return dateTime, nil
 	}
@@ -137,8 +137,8 @@ func readOriginalDateTime(byteOrder binary.ByteOrder, r io.ReadSeeker, offset in
 // - all entries have been collected, or
 // - it has scanned the maximum ID among the desired ones (entries are written according to the natural ordering of their
 // ID value: no point in looking further).
-func collectIFDEntries(byteOrder binary.ByteOrder, r io.ReadSeeker, offset int64, wanted *wanted) (map[uint16]Entry, error) {
-	var entries = make(map[uint16]Entry)
+func collectIFDEntries(byteOrder binary.ByteOrder, r io.ReadSeeker, offset int64, wanted *wanted) (map[EntryID]Entry, error) {
+	var entries = make(map[EntryID]Entry)
 
 	buffer := make([]byte, 2)
 	_, err := r.Read(buffer)
@@ -157,7 +157,7 @@ func collectIFDEntries(byteOrder binary.ByteOrder, r io.ReadSeeker, offset int64
 			return nil, err
 		}
 
-		id := byteOrder.Uint16(buffer[:2])
+		id := EntryID(byteOrder.Uint16(buffer[:2]))
 		if wanted.Contains(id) {
 			entries[id] = Entry{
 				ID:       id,
