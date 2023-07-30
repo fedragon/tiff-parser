@@ -2,10 +2,11 @@ package tiff
 
 import (
 	"encoding/binary"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
-	"time"
+
+	"github.com/fedragon/tiff-parser/tiff/entry"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseEndianness(t *testing.T) {
@@ -102,32 +103,70 @@ func Test_ParseMagicNumber(t *testing.T) {
 	}
 }
 
-func TestParseDateTimeOriginal_CR2(t *testing.T) {
+func TestParse_CR2(t *testing.T) {
 	r, err := os.Open("../test/data/image.cr2")
-	defer r.Close()
 	assert.NoError(t, err)
+	defer r.Close()
 
 	p, err := NewParser(r)
-	if assert.NoError(t, err) {
-		date, found, err := p.ParseOriginalDatetime()
-		if assert.NoError(t, err) {
-			assert.True(t, found)
-			assert.Equal(t, time.Date(2021, 11, 19, 12, 21, 10, 0, time.UTC), date)
-		}
-	}
+	assert.NoError(t, err)
+
+	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal)
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, entries)
+
+	width, err := p.ReadUint16(entries[entry.ImageWidth])
+	assert.NoError(t, err)
+	assert.EqualValues(t, 5184, width)
+
+	height, err := p.ReadUint16(entries[entry.ImageHeight])
+	assert.NoError(t, err)
+	assert.EqualValues(t, 3456, height)
+
+	bitsPerSample, err := p.ReadUints16(entries[entry.BitsPerSample])
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, [3]uint16{8, 8, 8}, bitsPerSample)
+
+	make_, err := p.ReadString(entries[entry.Make])
+	assert.NoError(t, err)
+	assert.EqualValues(t, "Canon", make_)
+
+	dateTime, err := p.ReadString(entries[entry.DateTimeOriginal])
+	assert.NoError(t, err)
+	assert.EqualValues(t, "2021:11:19 12:21:10", dateTime)
 }
 
-func TestParseDateTimeOriginal_ORF(t *testing.T) {
+func TestParse_ORF(t *testing.T) {
 	r, err := os.Open("../test/data/image.orf")
-	defer r.Close()
 	assert.NoError(t, err)
+	defer r.Close()
 
 	p, err := NewParser(r)
-	if assert.NoError(t, err) {
-		date, found, err := p.ParseOriginalDatetime()
-		if assert.NoError(t, err) {
-			assert.True(t, found)
-			assert.Equal(t, time.Date(2016, 8, 12, 13, 32, 54, 0, time.UTC), date)
-		}
-	}
+	assert.NoError(t, err)
+
+	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal)
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, entries)
+
+	width, err := p.ReadUint32(entries[entry.ImageWidth])
+	assert.NoError(t, err)
+	assert.EqualValues(t, 4640, width, int(width))
+
+	height, err := p.ReadUint32(entries[entry.ImageHeight])
+	assert.NoError(t, err)
+	assert.EqualValues(t, 3472, height, int(height))
+
+	bitsPerSample, err := p.ReadUint16(entries[entry.BitsPerSample])
+	assert.NoError(t, err)
+	assert.EqualValues(t, 16, bitsPerSample)
+
+	make_, err := p.ReadString(entries[entry.Make])
+	assert.NoError(t, err)
+	assert.EqualValues(t, "OLYMPUS CORPORATION    ", make_)
+
+	dateTime, err := p.ReadString(entries[entry.DateTimeOriginal])
+	assert.NoError(t, err)
+	assert.EqualValues(t, "2016:08:12 13:32:54", dateTime)
 }
