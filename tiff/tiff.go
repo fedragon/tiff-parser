@@ -45,7 +45,7 @@ func NewParser(r io.ReadSeeker) (*Parser, error) {
 	}, nil
 }
 
-// WithMapping adds entry mapping(s) to the parser
+// WithMapping adds entry mapping(s) to the parser, so that it will know where those entries appear in the file.
 func (p *Parser) WithMapping(m map[entry.ID]Group) *Parser {
 	for k, v := range m {
 		p.mapping[k] = v
@@ -54,7 +54,7 @@ func (p *Parser) WithMapping(m map[entry.ID]Group) *Parser {
 	return p
 }
 
-// Parse parses the TIFF file, returning any entry found in it or an error if the read fails.
+// Parse parses the TIFF file, returning any entry found in it that matches the given IDs or an error if the read fails. It does not return an error if one or more of the entries are not found.
 func (p *Parser) Parse(ids ...entry.ID) (map[entry.ID]entry.Entry, error) {
 	entries := make(map[entry.ID]entry.Entry)
 	ifd0Wanted := newWanted()

@@ -3,6 +3,7 @@ package tiff
 import "github.com/fedragon/tiff-parser/tiff/entry"
 
 type (
+	// Group enumerates known (sub-)IFD: an Image File Directory (IFD) is a physical group of entries.
 	Group uint8
 )
 
@@ -27,6 +28,7 @@ const (
 	OrfMagicNumberLittleEndian = 0x524F
 )
 
+// Defaults maps IFD entries to the Group they belong to (e.g. IFD#0, Exif, GPSInfo), so that a `Parser` will know where to look for them.
 var Defaults = map[entry.ID]Group{
 	entry.ImageWidth:         GroupIfd0,
 	entry.ImageHeight:        GroupIfd0,
@@ -38,6 +40,7 @@ var Defaults = map[entry.ID]Group{
 	entry.GPSInfo:            GroupIfd0,
 	entry.ExposureTime:       GroupExif,
 	entry.FNumber:            GroupExif,
+	entry.ISO:                GroupExif,
 	entry.DateTimeOriginal:   GroupExif,
 	entry.OffsetTimeOriginal: GroupExif,
 	entry.GPSLatitude:        GroupGPSInfo,

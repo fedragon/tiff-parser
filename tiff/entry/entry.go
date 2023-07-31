@@ -7,10 +7,13 @@ type Entry struct {
 	ID       ID
 	DataType uint16
 	Length   uint32
-	Value    uint32 // value of the entry or byte offset to read the value from, depending on the DataType and Length
+	Value    uint32 // value of the entry or offset to read the value from, depending on DataType and Length
 }
 
 const (
+	// Size of an IFD entry, in bytes
+	Size = 12
+
 	// IFD #0
 
 	ImageWidth    ID = 0x100
@@ -26,6 +29,7 @@ const (
 
 	ExposureTime       ID = 0x829a
 	FNumber            ID = 0x829d
+	ISO                ID = 0x8827
 	DateTimeOriginal   ID = 0x9003
 	OffsetTimeOriginal ID = 0x9011
 
