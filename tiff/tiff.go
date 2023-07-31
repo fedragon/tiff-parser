@@ -12,10 +12,10 @@ import (
 
 // Parser represents a TIFF parser
 type Parser struct {
-	reader    io.ReadSeeker
-	byteOrder binary.ByteOrder
-	offset    int64
-	mapping   map[entry.ID]Group
+	reader         io.ReadSeeker
+	byteOrder      binary.ByteOrder
+	firstIFDOffset int64
+	mapping        map[entry.ID]Group
 }
 
 // NewParser returns a new parser or an error if the content is not a valid TIFF.
@@ -38,10 +38,10 @@ func NewParser(r io.ReadSeeker) (*Parser, error) {
 	firstIDOffset := int64(byteOrder.Uint32(header[4:8]))
 
 	return &Parser{
-		reader:    r,
-		byteOrder: byteOrder,
-		offset:    firstIDOffset,
-		mapping:   Defaults,
+		reader:         r,
+		byteOrder:      byteOrder,
+		firstIFDOffset: firstIDOffset,
+		mapping:        Defaults,
 	}, nil
 }
 
@@ -78,7 +78,7 @@ func (p *Parser) Parse(ids ...entry.ID) (map[entry.ID]entry.Entry, error) {
 		}
 	}
 
-	ifd0Entries, err := p.collect(ifd0Wanted)
+	ifd0Entries, err := p.collect(p.firstIFDOffset, ifd0Wanted)
 	if err != nil {
 		return nil, err
 	}
@@ -94,9 +94,8 @@ func (p *Parser) Parse(ids ...entry.ID) (map[entry.ID]entry.Entry, error) {
 		if !ok {
 			return nil, errors.New("exif IFD not found")
 		}
-		p.offset = int64(exifEntry.Value)
 
-		exifEntries, err := p.collect(exifWanted)
+		exifEntries, err := p.collect(int64(exifEntry.Value), exifWanted)
 		if err != nil {
 			return nil, err
 		}
@@ -111,9 +110,8 @@ func (p *Parser) Parse(ids ...entry.ID) (map[entry.ID]entry.Entry, error) {
 		if !ok {
 			return nil, errors.New("exif IFD not found")
 		}
-		p.offset = int64(gpsInfoEntry.Value)
 
-		gpsInfoEntries, err := p.collect(gpsInfoWanted)
+		gpsInfoEntries, err := p.collect(int64(gpsInfoEntry.Value), gpsInfoWanted)
 		if err != nil {
 			return nil, err
 		}
@@ -157,8 +155,9 @@ func validateMagicNumber(byteOrder binary.ByteOrder, buffer []byte) error {
 // - all entries have been collected, or
 // - it has scanned the maximum ID among the desired ones (entries are written according to the natural ordering of their
 // ID value: no point in looking further).
-func (p *Parser) collect(wanted *wanted) (map[entry.ID]entry.Entry, error) {
-	if _, err := p.reader.Seek(p.offset, io.SeekStart); err != nil {
+func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[entry.ID]entry.Entry, error) {
+	offset := startingOffset
+	if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
 		return nil, err
 	}
 
@@ -169,21 +168,21 @@ func (p *Parser) collect(wanted *wanted) (map[entry.ID]entry.Entry, error) {
 		return nil, err
 	}
 	numEntries := int64(p.byteOrder.Uint16(buffer))
-	if _, err := p.reader.Seek(p.offset+2, io.SeekStart); err != nil {
+	if _, err := p.reader.Seek(offset+2, io.SeekStart); err != nil {
 		return nil, err
 	}
-	p.offset += 2
+	offset += 2
 
 	for i := int64(0); i < numEntries; i++ {
-		buffer := make([]byte, 12)
-		if _, err := p.reader.Seek(p.offset, io.SeekStart); err != nil {
+		buffer := make([]byte, entry.Size)
+		if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
 			return nil, err
 		}
 		_, err := io.ReadFull(p.reader, buffer)
 		if err != nil {
 			return nil, err
 		}
-		p.offset += 12
+		offset += entry.Size
 
 		id := entry.ID(p.byteOrder.Uint16(buffer[:2]))
 		if wanted.Contains(id) {
@@ -301,6 +300,7 @@ func (p *Parser) ReadUints32(entry entry.Entry) ([]uint32, error) {
 	return res, nil
 }
 
+// ReadURational reads and returns an unsigned rational from an IFD entry, returning its numerator and denominator as uint32. It returns an error if it cannot read from the underlying reader.
 func (p *Parser) ReadURational(entry entry.Entry) (uint32, uint32, error) {
 	if entry.DataType != 5 {
 		return 0, 0, errors.New("entry is not a rational")
