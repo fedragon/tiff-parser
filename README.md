@@ -1,8 +1,8 @@
-## TIFF parser
+# TIFF parser
 
 Parses Exif metadata from TIFF-like files. Tested on Canon's CR2 and Olympus' ORF files.
 
-### Usage
+## Usage
 
 This library provides a low-level API to parse IFD entries from TIFF files: low-level here means that clients of this library need to provide the _IFD Entry ID_ of any entry they would like to retrieve and they also need to know what is its datatype, so that they can later read it into the appropriate type using the provided `parser.Read*` methods.
 
@@ -10,7 +10,7 @@ This is because there are many manufacturer-specific exceptions to how IFD entri
 
 [ExifTool - Exif Tags](https://exiftool.org/TagNames/EXIF.html) provides a very extensive compendium of all known IFD entries.
 
-#### Example
+### Example
 
 ```go
 package main
@@ -69,7 +69,7 @@ func main() {
 }
 ```
 
-### TIFF File structure
+## TIFF File structure
 
 ```
 TIFF header: 8 bytes
@@ -112,7 +112,7 @@ Image#3:
     ...
 ```
 
-### Credits
+## Credits
 
 The biggest challenge in parsing Exif metadata is that its structure is poorly documented and there are tons of manufacturer-specific exceptions to take into account.
 
