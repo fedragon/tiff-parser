@@ -7,13 +7,9 @@ import (
 	"io"
 )
 
-type endianness interface {
-	binary.ByteOrder
-	binary.AppendByteOrder
-}
-
+// BytesReadSeeker provides utilities to read and write on a byte buffer, for testing purposes.
 type BytesReadSeeker struct {
-	byteOrder endianness
+	byteOrder binary.AppendByteOrder
 	buffer    []byte
 	offset    int64
 
