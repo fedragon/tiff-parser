@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"os"
+	"path"
 	"testing"
 
 	"github.com/fedragon/tiff-parser/test"
@@ -146,6 +148,11 @@ func TestParse_CR2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, num)
 	assert.EqualValues(t, 40, den)
+
+	thumbnail, err := p.ReadThumbnail()
+	assert.NoError(t, err)
+	assert.Greater(t, len(thumbnail), 1)
+	assert.NoError(t, os.WriteFile(path.Join(t.TempDir(), "thumbnail.jpeg"), thumbnail, 0x644))
 }
 
 func TestParse_ORF(t *testing.T) {

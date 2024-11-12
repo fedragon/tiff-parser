@@ -37,4 +37,9 @@ const (
 
 	GPSLatitude  = 0x0002
 	GPSLongitude = 0x0004
+
+	// IFD #1
+
+	ThumbnailOffset = 0x0201
+	ThumbnailLength = 0x0202
 )

@@ -21,8 +21,7 @@ type Parser struct {
 // NewParser returns a new parser or an error if the content is not a valid TIFF.
 func NewParser(r io.ReadSeeker) (*Parser, error) {
 	header := make([]byte, 8) // only read the TIFF header
-	_, err := io.ReadFull(r, header)
-	if err != nil {
+	if _, err := io.ReadFull(r, header); err != nil {
 		return nil, err
 	}
 
@@ -163,8 +162,7 @@ func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[entry.ID]ent
 
 	var entries = make(map[entry.ID]entry.Entry)
 	buffer := make([]byte, 2)
-	_, err := io.ReadFull(p.reader, buffer)
-	if err != nil {
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
 		return nil, err
 	}
 	numEntries := int64(p.byteOrder.Uint16(buffer))
@@ -178,8 +176,7 @@ func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[entry.ID]ent
 		if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
 			return nil, err
 		}
-		_, err := io.ReadFull(p.reader, buffer)
-		if err != nil {
+		if _, err := io.ReadFull(p.reader, buffer); err != nil {
 			return nil, err
 		}
 		offset += entry.Size
@@ -202,6 +199,70 @@ func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[entry.ID]ent
 	return entries, nil
 }
 
+// ReadThumbnail reads the thumbnail stored in Image Data #1. The offset and length of Image Data #1 are written in IFD #1.
+func (p *Parser) ReadThumbnail() ([]byte, error) {
+	offset := p.firstIFDOffset
+	if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
+		return nil, err
+	}
+
+	buffer := make([]byte, 2)
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return nil, err
+	}
+
+	if _, err := p.reader.Seek(offset+2, io.SeekStart); err != nil {
+		return nil, err
+	}
+
+	// skip all entries in this IFD
+	numEntries := int64(p.byteOrder.Uint16(buffer))
+	offset += 2 + numEntries*12
+	if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
+		return nil, err
+	}
+
+	buffer = make([]byte, 4) // offset to IFD#1 is a ulong
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return nil, err
+	}
+	offsetToIdf1 := int64(p.byteOrder.Uint32(buffer))
+
+	entries, err := p.collect(
+		offsetToIdf1,
+		newWanted(entry.ThumbnailOffset, entry.ThumbnailLength),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var thumbnailOffset uint32
+	if elem, ok := entries[entry.ThumbnailOffset]; ok {
+		thumbnailOffset, err = p.ReadUint32(elem)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var thumbnailLength uint32
+	if elem, ok := entries[entry.ThumbnailLength]; ok {
+		thumbnailLength, err = p.ReadUint32(elem)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if _, err := p.reader.Seek(int64(thumbnailOffset), io.SeekStart); err != nil {
+		return nil, err
+	}
+	buffer = make([]byte, thumbnailLength)
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return nil, err
+	}
+
+	return buffer, nil
+}
+
 // ReadString reads and returns a string from an IFD entry, trimming its NUL-byte terminator. It returns an error if it cannot read the string.
 func (p *Parser) ReadString(entry entry.Entry) (string, error) {
 	if entry.DataType != 2 {
@@ -211,6 +272,7 @@ func (p *Parser) ReadString(entry entry.Entry) (string, error) {
 	if _, err := p.reader.Seek(int64(entry.Value), io.SeekStart); err != nil {
 		return "", err
 	}
+
 	res := make([]byte, entry.Length)
 	if _, err := io.ReadFull(p.reader, res); err != nil {
 		return "", err
@@ -251,6 +313,7 @@ func (p *Parser) ReadUints16(entry entry.Entry) ([]uint16, error) {
 	if _, err := io.ReadFull(p.reader, buffer); err != nil {
 		return nil, err
 	}
+
 	for i := 0; i < int(entry.Length); i++ {
 		res[i] = p.byteOrder.Uint16(buffer[i*2 : i*2+2])
 	}
