@@ -1,16 +1,23 @@
 package tiff
 
 import (
+	"bytes"
+	_ "embed"
 	"encoding/binary"
 	"fmt"
-	"github.com/fedragon/tiff-parser/test"
 	"io"
-	"os"
 	"testing"
 
+	"github.com/fedragon/tiff-parser/test"
 	"github.com/fedragon/tiff-parser/tiff/entry"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:embed testdata/image.cr2
+var cr2Image []byte
+
+//go:embed testdata/image.orf
+var orfImage []byte
 
 func TestParseEndianness(t *testing.T) {
 	testCases := []struct {
@@ -107,11 +114,7 @@ func Test_ParseMagicNumber(t *testing.T) {
 }
 
 func TestParse_CR2(t *testing.T) {
-	r, err := os.Open("../test/data/image.cr2")
-	assert.NoError(t, err)
-	defer r.Close()
-
-	p, err := NewParser(r)
+	p, err := NewParser(bytes.NewReader(cr2Image))
 	assert.NoError(t, err)
 
 	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal, entry.ExposureTime)
@@ -146,11 +149,7 @@ func TestParse_CR2(t *testing.T) {
 }
 
 func TestParse_ORF(t *testing.T) {
-	r, err := os.Open("../test/data/image.orf")
-	assert.NoError(t, err)
-	defer r.Close()
-
-	p, err := NewParser(r)
+	p, err := NewParser(bytes.NewReader(orfImage))
 	assert.NoError(t, err)
 
 	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal, entry.ExposureTime)

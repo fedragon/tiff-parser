@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	r, err := os.Open("...")
+	r, err := os.Open("<file_path>")
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +41,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("width: %v\n", width)
+		fmt.Println("width", width)
 	}
 
 	if en, ok := entries[model]; ok {
@@ -49,6 +49,6 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("model: %v\n", model)
+		fmt.Println("model", model)
 	}
 }
