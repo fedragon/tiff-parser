@@ -123,27 +123,28 @@ func TestParse_CR2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
 
-	width, err := p.ReadUint16(entries[ImageWidth])
+	width, err := entries[ImageWidth].ReadUint16()
 	assert.NoError(t, err)
 	assert.EqualValues(t, 5184, width)
 
-	height, err := p.ReadUint16(entries[ImageHeight])
+	height, err := entries[ImageHeight].ReadUint16()
 	assert.NoError(t, err)
 	assert.EqualValues(t, 3456, height)
 
-	bitsPerSample, err := p.ReadUints16(entries[BitsPerSample])
+	fmt.Println("data type", entries[BitsPerSample].DataType, "length", entries[BitsPerSample].Length)
+	bitsPerSample, err := entries[BitsPerSample].ReadUints16(p)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, [3]uint16{8, 8, 8}, bitsPerSample)
 
-	make_, err := p.ReadString(entries[Make])
+	make_, err := entries[Make].ReadString(p)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "Canon", make_)
 
-	dateTime, err := p.ReadString(entries[DateTimeOriginal])
+	dateTime, err := entries[DateTimeOriginal].ReadString(p)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "2021:11:19 12:21:10", dateTime)
 
-	num, den, err := p.ReadURational(entries[ExposureTime])
+	num, den, err := entries[ExposureTime].ReadURational(p)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, num)
 	assert.EqualValues(t, 40, den)
@@ -163,28 +164,28 @@ func TestParse_ORF(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
 
-	width, err := p.ReadUint32(entries[ImageWidth])
+	width, err := entries[ImageWidth].ReadUint32()
 	assert.NoError(t, err)
 	assert.EqualValues(t, 4640, width, int(width))
 
-	height, err := p.ReadUint32(entries[ImageHeight])
+	height, err := entries[ImageHeight].ReadUint32()
 	assert.NoError(t, err)
 	assert.EqualValues(t, 3472, height, int(height))
 
-	bitsPerSample, err := p.ReadUint16(entries[BitsPerSample])
+	bitsPerSample, err := entries[BitsPerSample].ReadUints16(p)
 	assert.NoError(t, err)
-	assert.EqualValues(t, 16, bitsPerSample)
+	assert.EqualValues(t, []uint16{16}, bitsPerSample)
 
-	make_, err := p.ReadString(entries[Make])
+	make_, err := entries[Make].ReadString(p)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "OLYMPUS CORPORATION    ", make_)
 
-	num, den, err := p.ReadURational(entries[ExposureTime])
+	num, den, err := entries[ExposureTime].ReadURational(p)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, num)
 	assert.EqualValues(t, 200, den)
 
-	dateTime, err := p.ReadString(entries[DateTimeOriginal])
+	dateTime, err := entries[DateTimeOriginal].ReadString(p)
 	assert.NoError(t, err)
 	assert.EqualValues(t, "2016:08:12 13:32:54", dateTime)
 }
@@ -255,7 +256,7 @@ func TestParser_ReadUints16(t *testing.T) {
 				reader:    tt.fields.reader,
 				byteOrder: binary.LittleEndian,
 			}
-			got, err := p.ReadUints16(tt.args.entry)
+			got, err := tt.args.entry.ReadUints16(p)
 			if !tt.wantErr(t, err, fmt.Sprintf("ReadUints16(%v)", tt.args.entry)) {
 				return
 			}
@@ -330,7 +331,7 @@ func TestParser_ReadUints32(t *testing.T) {
 				reader:    tt.fields.reader,
 				byteOrder: binary.LittleEndian,
 			}
-			got, err := p.ReadUints32(tt.args.entry)
+			got, err := tt.args.entry.ReadUints32(p)
 			if !tt.wantErr(t, err, fmt.Sprintf("ReadUints32(%v)", tt.args.entry)) {
 				return
 			}
@@ -394,7 +395,7 @@ func TestParser_ReadURational(t *testing.T) {
 				reader:    tt.fields.reader,
 				byteOrder: binary.LittleEndian,
 			}
-			gotNum, gotDen, err := p.ReadURational(tt.args.entry)
+			gotNum, gotDen, err := tt.args.entry.ReadURational(p)
 			if !tt.wantErr(t, err, fmt.Sprintf("ReadURational(%v)", tt.args.entry)) {
 				return
 			}
@@ -456,7 +457,7 @@ func TestParser_ReadString(t *testing.T) {
 				reader:    tt.fields.reader,
 				byteOrder: binary.LittleEndian,
 			}
-			got, err := p.ReadString(tt.args.entry)
+			got, err := tt.args.entry.ReadString(p)
 			if !tt.wantErr(t, err, fmt.Sprintf("ReadString(%v)", tt.args.entry)) {
 				return
 			}
@@ -466,8 +467,7 @@ func TestParser_ReadString(t *testing.T) {
 }
 
 func TestPrintEntries(t *testing.T) {
-	p, err := NewParser(bytes.NewReader(orfImage))
+	p, err := NewParser(bytes.NewReader(cr2Image))
 	assert.NoError(t, err)
-
-	p.PrintEntries(p.firstIFDOffset)
+	assert.NoError(t, p.PrintEntries(p.firstIFDOffset))
 }

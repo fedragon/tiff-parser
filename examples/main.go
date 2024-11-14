@@ -36,7 +36,7 @@ func main() {
 
 	if en, ok := entries[tiff.ImageWidth]; ok {
 		// read the value, casting it to the expected data type
-		width, err := p.ReadUint16(en)
+		width, err := en.ReadUint16()
 		if err != nil {
 			panic(err)
 		}
@@ -44,7 +44,7 @@ func main() {
 	}
 
 	if en, ok := entries[model]; ok {
-		model, err := p.ReadString(en)
+		model, err := en.ReadString(p)
 		if err != nil {
 			panic(err)
 		}
