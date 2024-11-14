@@ -9,6 +9,7 @@ type (
 
 const (
 	GroupIfd0 Group = iota
+	GroupIfd1
 	GroupExif
 	GroupGPSInfo
 

@@ -166,9 +166,6 @@ func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[entry.ID]ent
 		return nil, err
 	}
 	numEntries := int64(p.byteOrder.Uint16(buffer))
-	if _, err := p.reader.Seek(offset+2, io.SeekStart); err != nil {
-		return nil, err
-	}
 	offset += 2
 
 	for i := int64(0); i < numEntries; i++ {
@@ -185,7 +182,7 @@ func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[entry.ID]ent
 		if wanted.Contains(id) {
 			entries[id] = entry.Entry{
 				ID:       id,
-				DataType: p.byteOrder.Uint16(buffer[2:4]),
+				DataType: entry.DataType(p.byteOrder.Uint16(buffer[2:4])),
 				Length:   p.byteOrder.Uint32(buffer[4:8]),
 				Value:    p.byteOrder.Uint32(buffer[8:12]),
 			}
@@ -199,6 +196,41 @@ func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[entry.ID]ent
 	return entries, nil
 }
 
+func (p *Parser) PrintEntries(startingOffset int64) error {
+	offset := startingOffset
+	if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
+		return err
+	}
+
+	buffer := make([]byte, 2)
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return err
+	}
+	numEntries := int64(p.byteOrder.Uint16(buffer))
+	offset += 2
+
+	for i := int64(0); i < numEntries; i++ {
+		buffer := make([]byte, entry.Size)
+		if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
+			return err
+		}
+		if _, err := io.ReadFull(p.reader, buffer); err != nil {
+			return err
+		}
+		offset += entry.Size
+
+		current := entry.Entry{
+			ID:       entry.ID(p.byteOrder.Uint16(buffer[:2])),
+			DataType: entry.DataType(p.byteOrder.Uint16(buffer[2:4])),
+			Length:   p.byteOrder.Uint32(buffer[4:8]),
+			Value:    p.byteOrder.Uint32(buffer[8:12]),
+		}
+		fmt.Println(current.String())
+	}
+
+	return nil
+}
+
 // ReadThumbnail reads the thumbnail stored in Image Data #1. The offset and length of Image Data #1 are written in IFD #1.
 func (p *Parser) ReadThumbnail() ([]byte, error) {
 	offset := p.firstIFDOffset
@@ -208,10 +240,6 @@ func (p *Parser) ReadThumbnail() ([]byte, error) {
 
 	buffer := make([]byte, 2)
 	if _, err := io.ReadFull(p.reader, buffer); err != nil {
-		return nil, err
-	}
-
-	if _, err := p.reader.Seek(offset+2, io.SeekStart); err != nil {
 		return nil, err
 	}
 

@@ -465,3 +465,10 @@ func TestParser_ReadString(t *testing.T) {
 		})
 	}
 }
+
+func TestPrintEntries(t *testing.T) {
+	p, err := NewParser(bytes.NewReader(orfImage))
+	assert.NoError(t, err)
+
+	p.PrintEntries(p.firstIFDOffset)
+}
