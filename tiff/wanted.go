@@ -1,16 +1,14 @@
 package tiff
 
-import "github.com/fedragon/tiff-parser/tiff/entry"
-
 // wanted represents a set of Entry IDs
 type wanted struct {
-	ids map[entry.ID]struct{}
-	max entry.ID
+	ids map[EntryID]struct{}
+	max EntryID
 }
 
-func newWanted(ids ...entry.ID) *wanted {
+func newWanted(ids ...EntryID) *wanted {
 	we := wanted{
-		ids: map[entry.ID]struct{}{},
+		ids: map[EntryID]struct{}{},
 	}
 	for _, id := range ids {
 		we.Put(id)
@@ -19,19 +17,19 @@ func newWanted(ids ...entry.ID) *wanted {
 	return &we
 }
 
-func (we *wanted) Put(id entry.ID) {
+func (we *wanted) Put(id EntryID) {
 	we.ids[id] = struct{}{}
 	if id > we.max {
 		we.max = id
 	}
 }
 
-func (we *wanted) Contains(id entry.ID) bool {
+func (we *wanted) Contains(id EntryID) bool {
 	_, ok := we.ids[id]
 	return ok
 }
 
-func (we *wanted) Max() entry.ID {
+func (we *wanted) Max() EntryID {
 	return we.max
 }
 

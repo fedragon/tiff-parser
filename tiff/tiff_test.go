@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/fedragon/tiff-parser/test"
-	"github.com/fedragon/tiff-parser/tiff/entry"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -119,32 +118,32 @@ func TestParse_CR2(t *testing.T) {
 	p, err := NewParser(bytes.NewReader(cr2Image))
 	assert.NoError(t, err)
 
-	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal, entry.ExposureTime)
+	entries, err := p.Parse(ImageWidth, ImageHeight, BitsPerSample, Make, DateTimeOriginal, ExposureTime)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
 
-	width, err := p.ReadUint16(entries[entry.ImageWidth])
+	width, err := p.ReadUint16(entries[ImageWidth])
 	assert.NoError(t, err)
 	assert.EqualValues(t, 5184, width)
 
-	height, err := p.ReadUint16(entries[entry.ImageHeight])
+	height, err := p.ReadUint16(entries[ImageHeight])
 	assert.NoError(t, err)
 	assert.EqualValues(t, 3456, height)
 
-	bitsPerSample, err := p.ReadUints16(entries[entry.BitsPerSample])
+	bitsPerSample, err := p.ReadUints16(entries[BitsPerSample])
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, [3]uint16{8, 8, 8}, bitsPerSample)
 
-	make_, err := p.ReadString(entries[entry.Make])
+	make_, err := p.ReadString(entries[Make])
 	assert.NoError(t, err)
 	assert.EqualValues(t, "Canon", make_)
 
-	dateTime, err := p.ReadString(entries[entry.DateTimeOriginal])
+	dateTime, err := p.ReadString(entries[DateTimeOriginal])
 	assert.NoError(t, err)
 	assert.EqualValues(t, "2021:11:19 12:21:10", dateTime)
 
-	num, den, err := p.ReadURational(entries[entry.ExposureTime])
+	num, den, err := p.ReadURational(entries[ExposureTime])
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, num)
 	assert.EqualValues(t, 40, den)
@@ -159,33 +158,33 @@ func TestParse_ORF(t *testing.T) {
 	p, err := NewParser(bytes.NewReader(orfImage))
 	assert.NoError(t, err)
 
-	entries, err := p.Parse(entry.ImageWidth, entry.ImageHeight, entry.BitsPerSample, entry.Make, entry.DateTimeOriginal, entry.ExposureTime)
+	entries, err := p.Parse(ImageWidth, ImageHeight, BitsPerSample, Make, DateTimeOriginal, ExposureTime)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
 
-	width, err := p.ReadUint32(entries[entry.ImageWidth])
+	width, err := p.ReadUint32(entries[ImageWidth])
 	assert.NoError(t, err)
 	assert.EqualValues(t, 4640, width, int(width))
 
-	height, err := p.ReadUint32(entries[entry.ImageHeight])
+	height, err := p.ReadUint32(entries[ImageHeight])
 	assert.NoError(t, err)
 	assert.EqualValues(t, 3472, height, int(height))
 
-	bitsPerSample, err := p.ReadUint16(entries[entry.BitsPerSample])
+	bitsPerSample, err := p.ReadUint16(entries[BitsPerSample])
 	assert.NoError(t, err)
 	assert.EqualValues(t, 16, bitsPerSample)
 
-	make_, err := p.ReadString(entries[entry.Make])
+	make_, err := p.ReadString(entries[Make])
 	assert.NoError(t, err)
 	assert.EqualValues(t, "OLYMPUS CORPORATION    ", make_)
 
-	num, den, err := p.ReadURational(entries[entry.ExposureTime])
+	num, den, err := p.ReadURational(entries[ExposureTime])
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, num)
 	assert.EqualValues(t, 200, den)
 
-	dateTime, err := p.ReadString(entries[entry.DateTimeOriginal])
+	dateTime, err := p.ReadString(entries[DateTimeOriginal])
 	assert.NoError(t, err)
 	assert.EqualValues(t, "2016:08:12 13:32:54", dateTime)
 }
@@ -195,7 +194,7 @@ func TestParser_ReadUints16(t *testing.T) {
 		reader io.ReadSeeker
 	}
 	type args struct {
-		entry entry.Entry
+		entry Entry
 	}
 	tests := []struct {
 		name    string
@@ -208,11 +207,11 @@ func TestParser_ReadUints16(t *testing.T) {
 			"returns an error when data type != 3",
 			fields{nil},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 1,
 					Length:   1,
-					Value:    0,
+					RawValue: 0,
 				},
 			},
 			nil,
@@ -222,11 +221,11 @@ func TestParser_ReadUints16(t *testing.T) {
 			"returns the entry value when length == 1",
 			fields{nil},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 3,
 					Length:   1,
-					Value:    111,
+					RawValue: 111,
 				},
 			},
 			[]uint16{111},
@@ -238,11 +237,11 @@ func TestParser_ReadUints16(t *testing.T) {
 				test.NewBytesReadSeeker().WithUints16(111, 222),
 			},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 3,
 					Length:   2,
-					Value:    0,
+					RawValue: 0,
 				},
 			},
 			[]uint16{111, 222},
@@ -270,7 +269,7 @@ func TestParser_ReadUints32(t *testing.T) {
 		reader io.ReadSeeker
 	}
 	type args struct {
-		entry entry.Entry
+		entry Entry
 	}
 	tests := []struct {
 		name    string
@@ -283,11 +282,11 @@ func TestParser_ReadUints32(t *testing.T) {
 			"returns an error when data type != 4",
 			fields{nil},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 1,
 					Length:   1,
-					Value:    0,
+					RawValue: 0,
 				},
 			},
 			nil,
@@ -297,11 +296,11 @@ func TestParser_ReadUints32(t *testing.T) {
 			"returns the entry value when length == 1",
 			fields{nil},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 4,
 					Length:   1,
-					Value:    111,
+					RawValue: 111,
 				},
 			},
 			[]uint32{111},
@@ -313,11 +312,11 @@ func TestParser_ReadUints32(t *testing.T) {
 				test.NewBytesReadSeeker().WithUints32(111, 222),
 			},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 4,
 					Length:   2,
-					Value:    0,
+					RawValue: 0,
 				},
 			},
 			[]uint32{111, 222},
@@ -345,7 +344,7 @@ func TestParser_ReadURational(t *testing.T) {
 		reader io.ReadSeeker
 	}
 	type args struct {
-		entry entry.Entry
+		entry Entry
 	}
 	tests := []struct {
 		name    string
@@ -359,11 +358,11 @@ func TestParser_ReadURational(t *testing.T) {
 			"returns an error when data type != 5",
 			fields{nil},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 1,
 					Length:   1,
-					Value:    0,
+					RawValue: 0,
 				},
 			},
 			0,
@@ -376,11 +375,11 @@ func TestParser_ReadURational(t *testing.T) {
 				test.NewBytesReadSeeker().WithUints32(111, 222),
 			},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 5,
 					Length:   1,
-					Value:    0,
+					RawValue: 0,
 				},
 			},
 			111,
@@ -410,7 +409,7 @@ func TestParser_ReadString(t *testing.T) {
 		reader io.ReadSeeker
 	}
 	type args struct {
-		entry entry.Entry
+		entry Entry
 	}
 	tests := []struct {
 		name    string
@@ -423,11 +422,11 @@ func TestParser_ReadString(t *testing.T) {
 			"returns an error when data type != 2",
 			fields{nil},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 1,
 					Length:   1,
-					Value:    0,
+					RawValue: 0,
 				},
 			},
 			"",
@@ -439,11 +438,11 @@ func TestParser_ReadString(t *testing.T) {
 				test.NewBytesReadSeeker().WithString("abc\000"),
 			},
 			args{
-				entry.Entry{
+				Entry{
 					ID:       0,
 					DataType: 2,
 					Length:   4,
-					Value:    0,
+					RawValue: 0,
 				},
 			},
 			"abc",

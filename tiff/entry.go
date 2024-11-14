@@ -1,44 +1,44 @@
-package entry
+package tiff
 
 import (
 	"fmt"
 )
 
-type ID uint16
+type EntryID uint16
 type DataType uint16
 
 const (
-	// Size of an IFD entry, in bytes
-	Size = 12
+	// Length of an IFD entry, in bytes
+	EntryLength = 12
 
 	// IFD #0
 
-	ImageWidth    ID = 0x100
-	ImageHeight   ID = 0x101
-	BitsPerSample ID = 0x102
-	Compression   ID = 0x103
-	Make          ID = 0x10f
-	Model         ID = 0x110
-	Exif          ID = 0x8769
-	GPSInfo       ID = 0x8825
+	ImageWidth    EntryID = 0x100
+	ImageHeight   EntryID = 0x101
+	BitsPerSample EntryID = 0x102
+	Compression   EntryID = 0x103
+	Make          EntryID = 0x10f
+	Model         EntryID = 0x110
+	Exif          EntryID = 0x8769
+	GPSInfo       EntryID = 0x8825
 
 	// Exif sub-IFD
 
-	ExposureTime       ID = 0x829a
-	FNumber            ID = 0x829d
-	ISO                ID = 0x8827
-	DateTimeOriginal   ID = 0x9003
-	OffsetTimeOriginal ID = 0x9011
+	ExposureTime       EntryID = 0x829a
+	FNumber            EntryID = 0x829d
+	ISO                EntryID = 0x8827
+	DateTimeOriginal   EntryID = 0x9003
+	OffsetTimeOriginal EntryID = 0x9011
 
 	// GPSInfo sub-IFD
 
-	GPSLatitude  ID = 0x0002
-	GPSLongitude ID = 0x0004
+	GPSLatitude  EntryID = 0x0002
+	GPSLongitude EntryID = 0x0004
 
 	// Position depends on actual format
 
-	ThumbnailOffset ID = 0x0201 // in IFD #1 (PreviewImageStart if in IFD #0)
-	ThumbnailLength ID = 0x0202 // in IFD #1 (PreviewImageLength if in IFD #0)
+	ThumbnailOffset EntryID = 0x0201 // in IFD #1 (PreviewImageStart if in IFD #0)
+	ThumbnailLength EntryID = 0x0202 // in IFD #1 (PreviewImageLength if in IFD #0)
 )
 
 const (
@@ -58,10 +58,10 @@ const (
 
 // Entry represents an IFD entry
 type Entry struct {
-	ID       ID
+	ID       EntryID
 	DataType DataType
 	Length   uint32
-	Value    uint32 // value of the entry or offset to read the value from, depending on DataType and Length
+	RawValue uint32 // value of the entry or offset to read the value from, depending on DataType and Length
 }
 
 func (e Entry) String() string {

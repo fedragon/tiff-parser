@@ -1,7 +1,5 @@
 package tiff
 
-import "github.com/fedragon/tiff-parser/tiff/entry"
-
 type (
 	// Group enumerates known (sub-)IFD: an Image File Directory (IFD) is a physical group of entries.
 	Group uint8
@@ -30,20 +28,20 @@ const (
 )
 
 // Defaults maps IFD entries to the Group they belong to (e.g. IFD#0, Exif, GPSInfo), so that a `Parser` will know where to look for them.
-var Defaults = map[entry.ID]Group{
-	entry.ImageWidth:         GroupIfd0,
-	entry.ImageHeight:        GroupIfd0,
-	entry.BitsPerSample:      GroupIfd0,
-	entry.Compression:        GroupIfd0,
-	entry.Make:               GroupIfd0,
-	entry.Model:              GroupIfd0,
-	entry.Exif:               GroupIfd0,
-	entry.GPSInfo:            GroupIfd0,
-	entry.ExposureTime:       GroupExif,
-	entry.FNumber:            GroupExif,
-	entry.ISO:                GroupExif,
-	entry.DateTimeOriginal:   GroupExif,
-	entry.OffsetTimeOriginal: GroupExif,
-	entry.GPSLatitude:        GroupGPSInfo,
-	entry.GPSLongitude:       GroupGPSInfo,
+var Defaults = map[EntryID]Group{
+	ImageWidth:         GroupIfd0,
+	ImageHeight:        GroupIfd0,
+	BitsPerSample:      GroupIfd0,
+	Compression:        GroupIfd0,
+	Make:               GroupIfd0,
+	Model:              GroupIfd0,
+	Exif:               GroupIfd0,
+	GPSInfo:            GroupIfd0,
+	ExposureTime:       GroupExif,
+	FNumber:            GroupExif,
+	ISO:                GroupExif,
+	DateTimeOriginal:   GroupExif,
+	OffsetTimeOriginal: GroupExif,
+	GPSLatitude:        GroupGPSInfo,
+	GPSLongitude:       GroupGPSInfo,
 }
