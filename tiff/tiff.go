@@ -1,18 +1,12 @@
 package tiff
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 )
-
-type Source interface {
-	SeekFromStart(offset int64) error
-	ReadInto(buffer []byte) error
-	Uint16(buffer []byte) uint16
-	Uint32(buffer []byte) uint32
-}
 
 // Parser represents a TIFF parser
 type Parser struct {
@@ -55,24 +49,6 @@ func (p *Parser) WithMapping(m map[EntryID]Group) *Parser {
 	}
 
 	return p
-}
-
-func (p *Parser) SeekFromStart(offset int64) error {
-	_, err := p.reader.Seek(offset, io.SeekStart)
-	return err
-}
-
-func (p *Parser) ReadInto(buffer []byte) error {
-	_, err := io.ReadFull(p.reader, buffer)
-	return err
-}
-
-func (p *Parser) Uint16(buffer []byte) uint16 {
-	return p.byteOrder.Uint16(buffer)
-}
-
-func (p *Parser) Uint32(buffer []byte) uint32 {
-	return p.byteOrder.Uint32(buffer)
 }
 
 // Parse parses the TIFF file, returning any entry found in it that matches the given IDs or an error if the read fails. It does not return an error if one or more of the entries are not found.
@@ -202,11 +178,20 @@ func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[EntryID]Entr
 
 		id := EntryID(p.byteOrder.Uint16(buffer[:2]))
 		if wanted.Contains(id) {
+			dt := DataType(p.byteOrder.Uint16(buffer[2:4]))
+			length := p.byteOrder.Uint32(buffer[4:8])
+			rawValue := p.byteOrder.Uint32(buffer[8:12])
+			value, err := p.readValue(dt, length, rawValue)
+			if err != nil {
+				return nil, err
+			}
+
 			entries[id] = Entry{
 				ID:       id,
-				DataType: DataType(p.byteOrder.Uint16(buffer[2:4])),
-				Length:   p.byteOrder.Uint32(buffer[4:8]),
-				RawValue: p.byteOrder.Uint32(buffer[8:12]),
+				DataType: dt,
+				Length:   length,
+				RawValue: rawValue,
+				Value:    value,
 			}
 		}
 
@@ -216,6 +201,114 @@ func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[EntryID]Entr
 	}
 
 	return entries, nil
+}
+
+func (p *Parser) readValue(dt DataType, length uint32, rawValue uint32) (EntryValue, error) {
+	switch dt {
+	case DataType_String:
+		value, err := p.readString(length, rawValue)
+		if err != nil {
+			return EntryValue{}, err
+		}
+		return EntryValue{StringValue: &value}, nil
+	case DataType_UShort:
+		if length == 1 {
+			value := uint16(rawValue)
+			return EntryValue{Uint16Value: &value}, nil
+		} else {
+			values, err := p.readUints16(length, rawValue)
+			if err != nil {
+				return EntryValue{}, err
+			}
+			return EntryValue{Uint16Values: values}, nil
+		}
+	case DataType_ULong:
+		if length == 1 {
+			value := rawValue
+			return EntryValue{Uint32Value: &value}, nil
+		} else {
+			values, err := p.readUints32(length, rawValue)
+			if err != nil {
+				return EntryValue{}, err
+			}
+			return EntryValue{Uint32Values: values}, nil
+		}
+	case DataType_URational:
+		value, err := p.readURational(rawValue)
+		if err != nil {
+			return EntryValue{}, err
+		}
+		return EntryValue{URationalValue: &value}, nil
+	}
+	return EntryValue{}, nil
+}
+
+// readString reads and returns a string from an IFD entry, trimming its NUL-byte terminator. It returns an error if it cannot read the string.
+func (p *Parser) readString(length uint32, offset uint32) (string, error) {
+	if _, err := p.reader.Seek(int64(offset), io.SeekStart); err != nil {
+		return "", err
+	}
+
+	buffer := make([]byte, length)
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return "", err
+	}
+
+	return string(bytes.TrimSuffix(buffer, []byte{0x0})), nil
+}
+
+// readUints16 reads and returns a slice of uint16 from an IFD entry. It returns an error if it cannot read the slice.
+func (p *Parser) readUints16(length uint32, offset uint32) ([]uint16, error) {
+	res := make([]uint16, length)
+	if _, err := p.reader.Seek(int64(offset), io.SeekStart); err != nil {
+		return nil, err
+	}
+
+	size := 2
+	buffer := make([]byte, size*int(length))
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < int(length); i++ {
+		res[i] = p.byteOrder.Uint16(buffer[i*size : i*size+size])
+	}
+
+	return res, nil
+}
+
+// readUints32 reads and returns a slice of uint32 from an IFD entry. It returns an error if it cannot read the slice.
+func (p *Parser) readUints32(length uint32, offset uint32) ([]uint32, error) {
+	res := make([]uint32, length)
+	if _, err := p.reader.Seek(int64(offset), io.SeekStart); err != nil {
+		return nil, err
+	}
+
+	size := 4
+	buffer := make([]byte, size*int(length))
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < int(length); i++ {
+		res[i] = p.byteOrder.Uint32(buffer[i*size : i*size+size])
+	}
+
+	return res, nil
+}
+
+// readURational reads and returns an unsigned rational from an IFD entry, returning its numerator and denominator as uint32. It returns an error if it cannot read from the underlying reader.
+func (p *Parser) readURational(offset uint32) (URational, error) {
+	if _, err := p.reader.Seek(int64(offset), io.SeekStart); err != nil {
+		return URational{}, err
+	}
+
+	buffer := make([]byte, 8)
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return URational{}, err
+	}
+
+	return URational{p.byteOrder.Uint32(buffer[0:4]), p.byteOrder.Uint32(buffer[4:8])}, nil
 }
 
 func (p *Parser) PrintEntries(startingOffset int64) error {
@@ -241,17 +334,24 @@ func (p *Parser) PrintEntries(startingOffset int64) error {
 		}
 		offset += EntryLength
 
-		current := Entry{
-			ID:       EntryID(p.byteOrder.Uint16(buffer[:2])),
-			DataType: DataType(p.byteOrder.Uint16(buffer[2:4])),
-			Length:   p.byteOrder.Uint32(buffer[4:8]),
-			RawValue: p.byteOrder.Uint32(buffer[8:12]),
-		}
-		str, err := current.String(p)
+		id := EntryID(p.byteOrder.Uint16(buffer[:2]))
+		dt := DataType(p.byteOrder.Uint16(buffer[2:4]))
+		length := p.byteOrder.Uint32(buffer[4:8])
+		rawValue := p.byteOrder.Uint32(buffer[8:12])
+		value, err := p.readValue(dt, length, rawValue)
 		if err != nil {
 			return err
 		}
-		fmt.Println(str)
+
+		entry := Entry{
+			ID:       id,
+			DataType: dt,
+			Length:   length,
+			RawValue: rawValue,
+			Value:    value,
+		}
+
+		fmt.Println(entry.String())
 	}
 
 	return nil
@@ -292,17 +392,19 @@ func (p *Parser) ReadThumbnail() ([]byte, error) {
 
 	var thumbnailOffset uint32
 	if elem, ok := entries[ThumbnailOffset]; ok {
-		thumbnailOffset, err = elem.ReadUint32()
-		if err != nil {
-			return nil, err
+		if offset := elem.Value.Uint32Value; offset != nil {
+			thumbnailOffset = *offset
+		} else {
+			return nil, errors.New("thumbnail offset not found")
 		}
 	}
 
 	var thumbnailLength uint32
 	if elem, ok := entries[ThumbnailLength]; ok {
-		thumbnailLength, err = elem.ReadUint32()
-		if err != nil {
-			return nil, err
+		if length := elem.Value.Uint32Value; length != nil {
+			thumbnailLength = *length
+		} else {
+			return nil, errors.New("thumbnail length not found")
 		}
 	}
 

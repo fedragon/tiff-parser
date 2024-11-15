@@ -35,19 +35,16 @@ func main() {
 	}
 
 	if en, ok := entries[tiff.ImageWidth]; ok {
-		// read the value, casting it to the expected data type
-		width, err := en.ReadUint16()
-		if err != nil {
-			panic(err)
+		// if you're sure about the type of this field
+		fmt.Println("width", en.Value.Uint16Value)
+
+		// otherwise
+		switch en.DataType {
+		case tiff.DataType_UShort:
+			fmt.Println("width", *en.Value.Uint16Value)
+			// other cases ...
 		}
-		fmt.Println("width", width)
 	}
 
-	if en, ok := entries[model]; ok {
-		model, err := en.ReadString(p)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println("model", model)
-	}
+	fmt.Println("model", entries[model].Value.StringValue)
 }

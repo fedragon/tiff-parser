@@ -114,6 +114,257 @@ func Test_ParseMagicNumber(t *testing.T) {
 	}
 }
 
+func TestParser_readUints16(t *testing.T) {
+	type fields struct {
+		reader io.ReadSeeker
+	}
+	type args struct {
+		length uint32
+		offset uint32
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []uint16
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			"returns an error when seek fails",
+			fields{
+				test.NewBytesReadSeeker(),
+			},
+			args{
+				length: 1,
+				offset: 0,
+			},
+			nil,
+			assert.Error,
+		},
+		{
+			"returns the entry value when length == 1",
+			fields{
+				test.NewBytesReadSeeker().WithUints16(111),
+			},
+			args{
+				length: 1,
+				offset: 0,
+			},
+			[]uint16{111},
+			assert.NoError,
+		},
+		{
+			"returns all values when length > 1",
+			fields{
+				test.NewBytesReadSeeker().WithUints16(111, 222),
+			},
+			args{
+				length: 2,
+				offset: 0,
+			},
+			[]uint16{111, 222},
+			assert.NoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Parser{
+				reader:    tt.fields.reader,
+				byteOrder: binary.LittleEndian,
+			}
+			got, err := p.readUints16(tt.args.length, tt.args.offset)
+			if !tt.wantErr(t, err, fmt.Sprintf("readUints16(%v, %v)", tt.args.length, tt.args.offset)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "readUints16(%v, %v)", tt.args.length, tt.args.offset)
+		})
+	}
+}
+
+func TestParser_readUints32(t *testing.T) {
+	type fields struct {
+		reader io.ReadSeeker
+	}
+	type args struct {
+		length uint32
+		offset uint32
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []uint32
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			"returns an error when seek fails",
+			fields{
+				test.NewBytesReadSeeker(),
+			},
+			args{
+				length: 1,
+				offset: 0,
+			},
+			nil,
+			assert.Error,
+		},
+		{
+			"returns the entry value when length == 1",
+			fields{
+				test.NewBytesReadSeeker().WithUints32(111),
+			},
+			args{
+				length: 1,
+				offset: 0,
+			},
+			[]uint32{111},
+			assert.NoError,
+		},
+		{
+			"returns all values when length > 1",
+			fields{
+				test.NewBytesReadSeeker().WithUints32(111, 222),
+			},
+			args{
+				length: 2,
+				offset: 0,
+			},
+			[]uint32{111, 222},
+			assert.NoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Parser{
+				reader:    tt.fields.reader,
+				byteOrder: binary.LittleEndian,
+			}
+			got, err := p.readUints32(tt.args.length, tt.args.offset)
+			if !tt.wantErr(t, err, fmt.Sprintf("readUints32(%v, %v)", tt.args.length, tt.args.offset)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "readUints32(%v, %v)", tt.args.length, tt.args.offset)
+		})
+	}
+}
+
+func TestParser_readURational(t *testing.T) {
+	type fields struct {
+		reader io.ReadSeeker
+	}
+	type args struct {
+		offset uint32
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    URational
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			"returns an error when seek fails",
+			fields{
+				test.NewBytesReadSeeker(),
+			},
+			args{
+				offset: 0,
+			},
+			URational{},
+			assert.Error,
+		},
+		{
+			"returns numerator and denominator",
+			fields{
+				test.NewBytesReadSeeker().WithUints32(111, 222),
+			},
+			args{
+				offset: 0,
+			},
+			URational{111, 222},
+			assert.NoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Parser{
+				reader:    tt.fields.reader,
+				byteOrder: binary.LittleEndian,
+			}
+			got, err := p.readURational(tt.args.offset)
+			if !tt.wantErr(t, err, fmt.Sprintf("readURational(%v)", tt.args.offset)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "readURational(%v)", tt.args.offset)
+		})
+	}
+}
+
+func TestParser_readString(t *testing.T) {
+	type fields struct {
+		reader io.ReadSeeker
+	}
+	type args struct {
+		length uint32
+		offset uint32
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    string
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			"returns an error when seek fails",
+			fields{
+				test.NewBytesReadSeeker(),
+			},
+			args{
+				length: 1,
+				offset: 0,
+			},
+			"",
+			assert.Error,
+		},
+		{
+			"returns string",
+			fields{
+				test.NewBytesReadSeeker().WithString("abc\000"),
+			},
+			args{
+				length: 4,
+				offset: 0,
+			},
+			"abc",
+			assert.NoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Parser{
+				reader:    tt.fields.reader,
+				byteOrder: binary.LittleEndian,
+			}
+			got, err := p.readString(tt.args.length, tt.args.offset)
+			if !tt.wantErr(t, err, fmt.Sprintf("readString(%v, %v)", tt.args.length, tt.args.offset)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "readString(%v, %v)", tt.args.length, tt.args.offset)
+		})
+	}
+}
+
+func TestPrintEntries(t *testing.T) {
+	p, err := NewParser(bytes.NewReader(orfImage))
+	assert.NoError(t, err)
+	assert.NoError(t, p.PrintEntries(p.firstIFDOffset))
+}
+
 func TestParse_CR2(t *testing.T) {
 	p, err := NewParser(bytes.NewReader(cr2Image))
 	assert.NoError(t, err)
@@ -123,31 +374,29 @@ func TestParse_CR2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
 
-	width, err := entries[ImageWidth].ReadUint16()
-	assert.NoError(t, err)
-	assert.EqualValues(t, 5184, width)
+	width := entries[ImageWidth].Value.Uint16Value
+	assert.NotNil(t, width)
+	assert.EqualValues(t, 5184, *width)
 
-	height, err := entries[ImageHeight].ReadUint16()
-	assert.NoError(t, err)
-	assert.EqualValues(t, 3456, height)
+	height := entries[ImageHeight].Value.Uint16Value
+	assert.NotNil(t, height)
+	assert.EqualValues(t, 3456, *height)
 
-	fmt.Println("data type", entries[BitsPerSample].DataType, "length", entries[BitsPerSample].Length)
-	bitsPerSample, err := entries[BitsPerSample].ReadUints16(p)
-	assert.NoError(t, err)
+	bitsPerSample := entries[BitsPerSample].Value.Uint16Values
 	assert.ElementsMatch(t, [3]uint16{8, 8, 8}, bitsPerSample)
 
-	make_, err := entries[Make].ReadString(p)
-	assert.NoError(t, err)
-	assert.EqualValues(t, "Canon", make_)
+	make_ := entries[Make].Value.StringValue
+	assert.NotNil(t, make_)
+	assert.EqualValues(t, "Canon", *make_)
 
-	dateTime, err := entries[DateTimeOriginal].ReadString(p)
-	assert.NoError(t, err)
-	assert.EqualValues(t, "2021:11:19 12:21:10", dateTime)
+	dateTime := entries[DateTimeOriginal].Value.StringValue
+	assert.NotNil(t, dateTime)
+	assert.EqualValues(t, "2021:11:19 12:21:10", *dateTime)
 
-	num, den, err := entries[ExposureTime].ReadURational(p)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 1, num)
-	assert.EqualValues(t, 40, den)
+	numden := entries[ExposureTime].Value.URationalValue
+	assert.NotNil(t, numden)
+	assert.EqualValues(t, 1, numden.Numerator)
+	assert.EqualValues(t, 40, numden.Denominator)
 
 	thumbnail, err := p.ReadThumbnail()
 	assert.NoError(t, err)
@@ -164,310 +413,30 @@ func TestParse_ORF(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
 
-	width, err := entries[ImageWidth].ReadUint32()
-	assert.NoError(t, err)
-	assert.EqualValues(t, 4640, width, int(width))
+	width := entries[ImageWidth].Value.Uint32Value
+	assert.NotNil(t, width)
+	assert.EqualValues(t, 4640, *width)
 
-	height, err := entries[ImageHeight].ReadUint32()
-	assert.NoError(t, err)
-	assert.EqualValues(t, 3472, height, int(height))
+	height := entries[ImageHeight].Value.Uint32Value
+	assert.NotNil(t, height)
+	assert.EqualValues(t, 3472, *height)
 
-	bitsPerSample, err := entries[BitsPerSample].ReadUints16(p)
-	assert.NoError(t, err)
-	assert.EqualValues(t, []uint16{16}, bitsPerSample)
+	fmt.Printf("%v\n", entries[BitsPerSample].Value)
 
-	make_, err := entries[Make].ReadString(p)
-	assert.NoError(t, err)
-	assert.EqualValues(t, "OLYMPUS CORPORATION    ", make_)
+	bitsPerSample := entries[BitsPerSample].Value.Uint16Value
+	assert.NotNil(t, bitsPerSample)
+	assert.EqualValues(t, 16, *bitsPerSample)
 
-	num, den, err := entries[ExposureTime].ReadURational(p)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 1, num)
-	assert.EqualValues(t, 200, den)
+	make_ := entries[Make].Value.StringValue
+	assert.NotNil(t, make_)
+	assert.EqualValues(t, "OLYMPUS CORPORATION    ", *make_)
 
-	dateTime, err := entries[DateTimeOriginal].ReadString(p)
-	assert.NoError(t, err)
-	assert.EqualValues(t, "2016:08:12 13:32:54", dateTime)
-}
+	numden := entries[ExposureTime].Value.URationalValue
+	assert.NotNil(t, numden)
+	assert.EqualValues(t, 1, numden.Numerator)
+	assert.EqualValues(t, 200, numden.Denominator)
 
-func TestParser_ReadUints16(t *testing.T) {
-	type fields struct {
-		reader io.ReadSeeker
-	}
-	type args struct {
-		entry Entry
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []uint16
-		wantErr assert.ErrorAssertionFunc
-	}{
-		{
-			"returns an error when data type != 3",
-			fields{nil},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 1,
-					Length:   1,
-					RawValue: 0,
-				},
-			},
-			nil,
-			assert.Error,
-		},
-		{
-			"returns the entry value when length == 1",
-			fields{nil},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 3,
-					Length:   1,
-					RawValue: 111,
-				},
-			},
-			[]uint16{111},
-			assert.NoError,
-		},
-		{
-			"returns all values when length > 1",
-			fields{
-				test.NewBytesReadSeeker().WithUints16(111, 222),
-			},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 3,
-					Length:   2,
-					RawValue: 0,
-				},
-			},
-			[]uint16{111, 222},
-			assert.NoError,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{
-				reader:    tt.fields.reader,
-				byteOrder: binary.LittleEndian,
-			}
-			got, err := tt.args.entry.ReadUints16(p)
-			if !tt.wantErr(t, err, fmt.Sprintf("ReadUints16(%v)", tt.args.entry)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "ReadUints16(%v)", tt.args.entry)
-		})
-	}
-}
-
-func TestParser_ReadUints32(t *testing.T) {
-	type fields struct {
-		reader io.ReadSeeker
-	}
-	type args struct {
-		entry Entry
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []uint32
-		wantErr assert.ErrorAssertionFunc
-	}{
-		{
-			"returns an error when data type != 4",
-			fields{nil},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 1,
-					Length:   1,
-					RawValue: 0,
-				},
-			},
-			nil,
-			assert.Error,
-		},
-		{
-			"returns the entry value when length == 1",
-			fields{nil},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 4,
-					Length:   1,
-					RawValue: 111,
-				},
-			},
-			[]uint32{111},
-			assert.NoError,
-		},
-		{
-			"returns all values when length > 1",
-			fields{
-				test.NewBytesReadSeeker().WithUints32(111, 222),
-			},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 4,
-					Length:   2,
-					RawValue: 0,
-				},
-			},
-			[]uint32{111, 222},
-			assert.NoError,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{
-				reader:    tt.fields.reader,
-				byteOrder: binary.LittleEndian,
-			}
-			got, err := tt.args.entry.ReadUints32(p)
-			if !tt.wantErr(t, err, fmt.Sprintf("ReadUints32(%v)", tt.args.entry)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "ReadUints32(%v)", tt.args.entry)
-		})
-	}
-}
-
-func TestParser_ReadURational(t *testing.T) {
-	type fields struct {
-		reader io.ReadSeeker
-	}
-	type args struct {
-		entry Entry
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantNum uint32
-		wantDen uint32
-		wantErr assert.ErrorAssertionFunc
-	}{
-		{
-			"returns an error when data type != 5",
-			fields{nil},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 1,
-					Length:   1,
-					RawValue: 0,
-				},
-			},
-			0,
-			0,
-			assert.Error,
-		},
-		{
-			"returns numerator and denominator",
-			fields{
-				test.NewBytesReadSeeker().WithUints32(111, 222),
-			},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 5,
-					Length:   1,
-					RawValue: 0,
-				},
-			},
-			111,
-			222,
-			assert.NoError,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{
-				reader:    tt.fields.reader,
-				byteOrder: binary.LittleEndian,
-			}
-			gotNum, gotDen, err := tt.args.entry.ReadURational(p)
-			if !tt.wantErr(t, err, fmt.Sprintf("ReadURational(%v)", tt.args.entry)) {
-				return
-			}
-			assert.Equalf(t, tt.wantNum, gotNum, "ReadURational(%v)", tt.args.entry)
-			assert.Equalf(t, tt.wantDen, gotDen, "ReadURational(%v)", tt.args.entry)
-		})
-	}
-}
-
-func TestParser_ReadString(t *testing.T) {
-	type fields struct {
-		reader io.ReadSeeker
-	}
-	type args struct {
-		entry Entry
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    string
-		wantErr assert.ErrorAssertionFunc
-	}{
-		{
-			"returns an error when data type != 2",
-			fields{nil},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 1,
-					Length:   1,
-					RawValue: 0,
-				},
-			},
-			"",
-			assert.Error,
-		},
-		{
-			"returns string",
-			fields{
-				test.NewBytesReadSeeker().WithString("abc\000"),
-			},
-			args{
-				Entry{
-					ID:       0,
-					DataType: 2,
-					Length:   4,
-					RawValue: 0,
-				},
-			},
-			"abc",
-			assert.NoError,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{
-				reader:    tt.fields.reader,
-				byteOrder: binary.LittleEndian,
-			}
-			got, err := tt.args.entry.ReadString(p)
-			if !tt.wantErr(t, err, fmt.Sprintf("ReadString(%v)", tt.args.entry)) {
-				return
-			}
-			assert.Equalf(t, tt.want, got, "ReadString(%v)", tt.args.entry)
-		})
-	}
-}
-
-func TestPrintEntries(t *testing.T) {
-	p, err := NewParser(bytes.NewReader(cr2Image))
-	assert.NoError(t, err)
-	assert.NoError(t, p.PrintEntries(p.firstIFDOffset))
+	dateTime := entries[DateTimeOriginal].Value.StringValue
+	assert.NotNil(t, dateTime)
+	assert.EqualValues(t, "2016:08:12 13:32:54", *dateTime)
 }
