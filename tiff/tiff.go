@@ -32,12 +32,10 @@ func NewParser(r io.ReadSeeker) (*Parser, error) {
 		return nil, err
 	}
 
-	firstIDOffset := int64(byteOrder.Uint32(header[4:8]))
-
 	return &Parser{
 		reader:         r,
 		byteOrder:      byteOrder,
-		firstIFDOffset: firstIDOffset,
+		firstIFDOffset: int64(byteOrder.Uint32(header[4:8])),
 		mapping:        Defaults,
 	}, nil
 }
@@ -75,7 +73,8 @@ func (p *Parser) Parse(ids ...EntryID) (map[EntryID]Entry, error) {
 		}
 	}
 
-	ifd0Entries, err := p.collect(p.firstIFDOffset, ifd0Wanted)
+	ifd0Offset := p.firstIFDOffset
+	ifd0Entries, err := p.collect(ifd0Offset, ifd0Wanted)
 	if err != nil {
 		return nil, err
 	}
@@ -205,40 +204,74 @@ func (p *Parser) collect(startingOffset int64, wanted *wanted) (map[EntryID]Entr
 
 func (p *Parser) readValue(dt DataType, length uint32, rawValue uint32) (EntryValue, error) {
 	switch dt {
+	case DataType_UByte:
+		value := byte(rawValue)
+		return EntryValue{UByte: &value}, nil
 	case DataType_String:
 		value, err := p.readString(length, rawValue)
 		if err != nil {
 			return EntryValue{}, err
 		}
-		return EntryValue{StringValue: &value}, nil
+		return EntryValue{String: &value}, nil
 	case DataType_UShort:
 		if length == 1 {
 			value := uint16(rawValue)
-			return EntryValue{Uint16Value: &value}, nil
+			return EntryValue{Uint16: &value}, nil
 		} else {
 			values, err := p.readUints16(length, rawValue)
 			if err != nil {
 				return EntryValue{}, err
 			}
-			return EntryValue{Uint16Values: values}, nil
+			return EntryValue{Uints16: values}, nil
 		}
 	case DataType_ULong:
 		if length == 1 {
 			value := rawValue
-			return EntryValue{Uint32Value: &value}, nil
+			return EntryValue{Uint32: &value}, nil
 		} else {
 			values, err := p.readUints32(length, rawValue)
 			if err != nil {
 				return EntryValue{}, err
 			}
-			return EntryValue{Uint32Values: values}, nil
+			return EntryValue{Uints32: values}, nil
 		}
 	case DataType_URational:
 		value, err := p.readURational(rawValue)
 		if err != nil {
 			return EntryValue{}, err
 		}
-		return EntryValue{URationalValue: &value}, nil
+		return EntryValue{URational: &value}, nil
+	case DataType_Byte:
+		value := byte(rawValue)
+		return EntryValue{Byte: &value}, nil
+	case DataType_Short:
+		if length == 1 {
+			value := int16(rawValue)
+			return EntryValue{Int16: &value}, nil
+		} else {
+			values, err := p.readInts16(length, rawValue)
+			if err != nil {
+				return EntryValue{}, err
+			}
+			return EntryValue{Ints16: values}, nil
+		}
+	case DataType_Long:
+		if length == 1 {
+			value := int32(rawValue)
+			return EntryValue{Int32: &value}, nil
+		} else {
+			values, err := p.readInts32(length, rawValue)
+			if err != nil {
+				return EntryValue{}, err
+			}
+			return EntryValue{Ints32: values}, nil
+		}
+	case DataType_Rational:
+		value, err := p.readRational(rawValue)
+		if err != nil {
+			return EntryValue{}, err
+		}
+		return EntryValue{Rational: &value}, nil
 	}
 	return EntryValue{}, nil
 }
@@ -277,6 +310,20 @@ func (p *Parser) readUints16(length uint32, offset uint32) ([]uint16, error) {
 	return res, nil
 }
 
+// readInts16 reads and returns a slice of int16 from an IFD entry. It returns an error if it cannot read the slice.
+func (p *Parser) readInts16(length uint32, offset uint32) ([]int16, error) {
+	uints16, err := p.readUints16(length, offset)
+	if err != nil {
+		return nil, err
+	}
+	ints16 := make([]int16, len(uints16))
+	for i, u := range uints16 {
+		ints16[i] = int16(u)
+	}
+
+	return ints16, nil
+}
+
 // readUints32 reads and returns a slice of uint32 from an IFD entry. It returns an error if it cannot read the slice.
 func (p *Parser) readUints32(length uint32, offset uint32) ([]uint32, error) {
 	res := make([]uint32, length)
@@ -297,7 +344,21 @@ func (p *Parser) readUints32(length uint32, offset uint32) ([]uint32, error) {
 	return res, nil
 }
 
-// readURational reads and returns an unsigned rational from an IFD entry, returning its numerator and denominator as uint32. It returns an error if it cannot read from the underlying reader.
+// readInts32 reads and returns a slice of int32 from an IFD entry. It returns an error if it cannot read the slice.
+func (p *Parser) readInts32(length uint32, offset uint32) ([]int32, error) {
+	uints32, err := p.readUints32(length, offset)
+	if err != nil {
+		return nil, err
+	}
+	ints32 := make([]int32, len(uints32))
+	for i, u := range uints32 {
+		ints32[i] = int32(u)
+	}
+
+	return ints32, nil
+}
+
+// readURational reads and returns an unsigned rational from an IFD entry, representing its numerator and denominator as uint32. It returns an error if it cannot read from the underlying reader.
 func (p *Parser) readURational(offset uint32) (URational, error) {
 	if _, err := p.reader.Seek(int64(offset), io.SeekStart); err != nil {
 		return URational{}, err
@@ -311,8 +372,27 @@ func (p *Parser) readURational(offset uint32) (URational, error) {
 	return URational{p.byteOrder.Uint32(buffer[0:4]), p.byteOrder.Uint32(buffer[4:8])}, nil
 }
 
-func (p *Parser) PrintEntries(startingOffset int64) error {
-	offset := startingOffset
+// readRational reads and returns an signed rational from an IFD entry, representing its numerator and denominator as int32. It returns an error if it cannot read from the underlying reader.
+func (p *Parser) readRational(offset uint32) (Rational, error) {
+	if _, err := p.reader.Seek(int64(offset), io.SeekStart); err != nil {
+		return Rational{}, err
+	}
+
+	buffer := make([]byte, 8)
+	if _, err := io.ReadFull(p.reader, buffer); err != nil {
+		return Rational{}, err
+	}
+
+	return Rational{int32(p.byteOrder.Uint32(buffer[0:4])), int32(p.byteOrder.Uint32(buffer[4:8]))}, nil
+}
+
+func printEntries(p *Parser, offsets []int64) error {
+	if len(offsets) == 0 {
+		return nil
+	}
+
+	offset := offsets[0]
+	offsets = offsets[1:]
 	if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
 		return err
 	}
@@ -321,10 +401,10 @@ func (p *Parser) PrintEntries(startingOffset int64) error {
 	if _, err := io.ReadFull(p.reader, buffer); err != nil {
 		return err
 	}
-	numEntries := int64(p.byteOrder.Uint16(buffer))
+	numEntries := p.byteOrder.Uint16(buffer)
 	offset += 2
 
-	for i := int64(0); i < numEntries; i++ {
+	for i := uint16(0); i < numEntries; i++ {
 		buffer := make([]byte, EntryLength)
 		if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
 			return err
@@ -332,7 +412,6 @@ func (p *Parser) PrintEntries(startingOffset int64) error {
 		if _, err := io.ReadFull(p.reader, buffer); err != nil {
 			return err
 		}
-		offset += EntryLength
 
 		id := EntryID(p.byteOrder.Uint16(buffer[:2]))
 		dt := DataType(p.byteOrder.Uint16(buffer[2:4]))
@@ -351,10 +430,39 @@ func (p *Parser) PrintEntries(startingOffset int64) error {
 			Value:    value,
 		}
 
+		if entry.ID == Exif {
+			fmt.Println("exif offset", entry.RawValue)
+			offsets = append(offsets, int64(entry.RawValue))
+		} else if entry.ID == GPSInfo {
+			fmt.Println("gps offset", entry.RawValue)
+			offsets = append(offsets, int64(entry.RawValue))
+		}
+
 		fmt.Println(entry.String())
+		offset += EntryLength
 	}
 
-	return nil
+	if _, err := p.reader.Seek(offset, io.SeekStart); err != nil {
+		return err
+	}
+	buffer = make([]byte, 4)
+	n, err := io.ReadFull(p.reader, buffer)
+	if err != nil {
+		return err
+	}
+	if n == 4 {
+		next := p.byteOrder.Uint32(buffer)
+		if next > 0 {
+			fmt.Println("appending offset", next)
+			offsets = append(offsets, int64(next))
+		}
+	}
+
+	return printEntries(p, offsets)
+}
+
+func (p *Parser) PrintEntries() error {
+	return printEntries(p, []int64{p.firstIFDOffset})
 }
 
 // ReadThumbnail reads the thumbnail stored in Image Data #1. The offset and length of Image Data #1 are written in IFD #1.
@@ -392,7 +500,7 @@ func (p *Parser) ReadThumbnail() ([]byte, error) {
 
 	var thumbnailOffset uint32
 	if elem, ok := entries[ThumbnailOffset]; ok {
-		if offset := elem.Value.Uint32Value; offset != nil {
+		if offset := elem.Value.Uint32; offset != nil {
 			thumbnailOffset = *offset
 		} else {
 			return nil, errors.New("thumbnail offset not found")
@@ -401,7 +509,7 @@ func (p *Parser) ReadThumbnail() ([]byte, error) {
 
 	var thumbnailLength uint32
 	if elem, ok := entries[ThumbnailLength]; ok {
-		if length := elem.Value.Uint32Value; length != nil {
+		if length := elem.Value.Uint32; length != nil {
 			thumbnailLength = *length
 		} else {
 			return nil, errors.New("thumbnail length not found")

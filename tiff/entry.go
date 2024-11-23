@@ -29,6 +29,7 @@ const (
 	ISO                EntryID = 0x8827
 	DateTimeOriginal   EntryID = 0x9003
 	OffsetTimeOriginal EntryID = 0x9011
+	MakerNotes         EntryID = 0x927c
 
 	// GPSInfo sub-IFD
 
@@ -52,8 +53,6 @@ const (
 	DataType_Short
 	DataType_Long
 	DataType_Rational
-	DataType_Single_Precision_IEEE_Format
-	DataType_Double_Precision_IEEE_Format
 )
 
 type URational struct {
@@ -61,13 +60,25 @@ type URational struct {
 	Denominator uint32
 }
 
+type Rational struct {
+	Numerator   int32
+	Denominator int32
+}
+
 type EntryValue struct {
-	StringValue    *string
-	Uint16Value    *uint16
-	Uint16Values   []uint16
-	Uint32Value    *uint32
-	Uint32Values   []uint32
-	URationalValue *URational
+	UByte     *byte
+	String    *string
+	Uint16    *uint16
+	Uints16   []uint16
+	Uint32    *uint32
+	Uints32   []uint32
+	URational *URational
+	Byte      *byte
+	Int16     *int16
+	Ints16    []int16
+	Int32     *int32
+	Ints32    []int32
+	Rational  *Rational
 }
 
 // Entry represents an IFD entry
@@ -85,40 +96,49 @@ func (e Entry) String() string {
 	switch DataType(e.DataType) {
 	case DataType_UByte:
 		dt = "unsigned byte"
+		value = fmt.Sprintf("%d", *e.Value.UByte)
 	case DataType_String:
 		dt = "string"
-		value = *e.Value.StringValue
+		value = *e.Value.String
 	case DataType_UShort:
 		dt = "unsigned short 16bits"
 		if e.Length == 1 {
-			value = fmt.Sprintf("%d", *e.Value.Uint16Value)
+			value = fmt.Sprintf("%d", *e.Value.Uint16)
 		} else {
-			value = fmt.Sprintf("%v", e.Value.Uint16Values)
+			value = fmt.Sprintf("%v", e.Value.Uints16)
 		}
 	case DataType_ULong:
 		dt = "unsigned long 32bits"
 		if e.Length == 1 {
-			value = fmt.Sprintf("%d", *e.Value.Uint32Value)
+			value = fmt.Sprintf("%d", *e.Value.Uint32)
 		} else {
-			value = fmt.Sprintf("%v", e.Value.Uint32Values)
+			value = fmt.Sprintf("%v", e.Value.Uints32)
 		}
 	case DataType_URational:
 		dt = "unsigned rational"
-		value = fmt.Sprintf("%d / %d", e.Value.URationalValue.Numerator, e.Value.URationalValue.Denominator)
+		value = fmt.Sprintf("%d / %d", e.Value.URational.Numerator, e.Value.URational.Denominator)
 	case DataType_Byte:
 		dt = "signed byte"
+		value = fmt.Sprintf("%d", *e.Value.Byte)
 	case DataType_UByte_Sequence:
 		dt = "unsigned byte sequence"
 	case DataType_Short:
 		dt = "signed short 16bits"
+		if e.Length == 1 {
+			value = fmt.Sprintf("%d", *e.Value.Int16)
+		} else {
+			value = fmt.Sprintf("%v", e.Value.Ints16)
+		}
 	case DataType_Long:
 		dt = "signed long 32bits"
+		if e.Length == 1 {
+			value = fmt.Sprintf("%d", *e.Value.Int32)
+		} else {
+			value = fmt.Sprintf("%v", e.Value.Ints32)
+		}
 	case DataType_Rational:
 		dt = "signed rational"
-	case DataType_Single_Precision_IEEE_Format:
-		dt = "single precision (2 bytes) IEEE format"
-	case DataType_Double_Precision_IEEE_Format:
-		dt = "double precision (4 bytes) IEEE format"
+		value = fmt.Sprintf("%d / %d", e.Value.Rational.Numerator, e.Value.Rational.Denominator)
 	}
 
 	return fmt.Sprintf("ID: 0x%X\nDataType: %s\nLength: %d\nValue: %s\n", e.ID, dt, e.Length, value)

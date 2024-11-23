@@ -36,15 +36,15 @@ func main() {
 
 	if en, ok := entries[tiff.ImageWidth]; ok {
 		// if you're sure about the type of this field
-		fmt.Println("width", en.Value.Uint16Value)
+		fmt.Println("width", *en.Value.Uint16)
 
 		// otherwise
 		switch en.DataType {
 		case tiff.DataType_UShort:
-			fmt.Println("width", *en.Value.Uint16Value)
+			fmt.Println("width", *en.Value.Uint16)
 			// other cases ...
 		}
 	}
 
-	fmt.Println("model", entries[model].Value.StringValue)
+	fmt.Println("model", entries[model].Value.String)
 }

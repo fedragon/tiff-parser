@@ -360,9 +360,9 @@ func TestParser_readString(t *testing.T) {
 }
 
 func TestPrintEntries(t *testing.T) {
-	p, err := NewParser(bytes.NewReader(orfImage))
+	p, err := NewParser(bytes.NewReader(cr2Image))
 	assert.NoError(t, err)
-	assert.NoError(t, p.PrintEntries(p.firstIFDOffset))
+	assert.NoError(t, p.PrintEntries())
 }
 
 func TestParse_CR2(t *testing.T) {
@@ -374,26 +374,26 @@ func TestParse_CR2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
 
-	width := entries[ImageWidth].Value.Uint16Value
+	width := entries[ImageWidth].Value.Uint16
 	assert.NotNil(t, width)
 	assert.EqualValues(t, 5184, *width)
 
-	height := entries[ImageHeight].Value.Uint16Value
+	height := entries[ImageHeight].Value.Uint16
 	assert.NotNil(t, height)
 	assert.EqualValues(t, 3456, *height)
 
-	bitsPerSample := entries[BitsPerSample].Value.Uint16Values
+	bitsPerSample := entries[BitsPerSample].Value.Uints16
 	assert.ElementsMatch(t, [3]uint16{8, 8, 8}, bitsPerSample)
 
-	make_ := entries[Make].Value.StringValue
+	make_ := entries[Make].Value.String
 	assert.NotNil(t, make_)
 	assert.EqualValues(t, "Canon", *make_)
 
-	dateTime := entries[DateTimeOriginal].Value.StringValue
+	dateTime := entries[DateTimeOriginal].Value.String
 	assert.NotNil(t, dateTime)
 	assert.EqualValues(t, "2021:11:19 12:21:10", *dateTime)
 
-	numden := entries[ExposureTime].Value.URationalValue
+	numden := entries[ExposureTime].Value.URational
 	assert.NotNil(t, numden)
 	assert.EqualValues(t, 1, numden.Numerator)
 	assert.EqualValues(t, 40, numden.Denominator)
@@ -413,30 +413,30 @@ func TestParse_ORF(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, entries)
 
-	width := entries[ImageWidth].Value.Uint32Value
+	width := entries[ImageWidth].Value.Uint32
 	assert.NotNil(t, width)
 	assert.EqualValues(t, 4640, *width)
 
-	height := entries[ImageHeight].Value.Uint32Value
+	height := entries[ImageHeight].Value.Uint32
 	assert.NotNil(t, height)
 	assert.EqualValues(t, 3472, *height)
 
 	fmt.Printf("%v\n", entries[BitsPerSample].Value)
 
-	bitsPerSample := entries[BitsPerSample].Value.Uint16Value
+	bitsPerSample := entries[BitsPerSample].Value.Uint16
 	assert.NotNil(t, bitsPerSample)
 	assert.EqualValues(t, 16, *bitsPerSample)
 
-	make_ := entries[Make].Value.StringValue
+	make_ := entries[Make].Value.String
 	assert.NotNil(t, make_)
 	assert.EqualValues(t, "OLYMPUS CORPORATION    ", *make_)
 
-	numden := entries[ExposureTime].Value.URationalValue
+	numden := entries[ExposureTime].Value.URational
 	assert.NotNil(t, numden)
 	assert.EqualValues(t, 1, numden.Numerator)
 	assert.EqualValues(t, 200, numden.Denominator)
 
-	dateTime := entries[DateTimeOriginal].Value.StringValue
+	dateTime := entries[DateTimeOriginal].Value.String
 	assert.NotNil(t, dateTime)
 	assert.EqualValues(t, "2016:08:12 13:32:54", *dateTime)
 }
