@@ -19,17 +19,8 @@ func main() {
 		panic(err)
 	}
 
-	// an `EntryID` is simply a type alias for `uint16`
-	model := tiff.EntryID(0x0110)
-
-	// only needed when your entry is not listed in `tiff.Defaults`
-	p.WithMapping(map[tiff.EntryID]tiff.Group{
-		model: tiff.GroupIfd0, // Model belongs to the first IFD (aka IFD#0)
-		// ...
-	})
-
-	// provide the IDs of the entries you would like to collect
-	entries, err := p.Parse(tiff.ImageWidth, model)
+	// provide the ID(s) of the entry you would like to collect (multiple IDs allowed)
+	entries, err := p.Parse(tiff.ImageWidth)
 	if err != nil {
 		panic(err)
 	}
@@ -44,6 +35,20 @@ func main() {
 			fmt.Println("width", *en.Value.Uint16)
 			// other cases ...
 		}
+	}
+
+	// an `EntryID` is simply a type alias for `uint16`
+	model := tiff.EntryID(0x0110)
+
+	// only needed when your entry is not listed in `tiff.Defaults`
+	p.WithMapping(map[tiff.EntryID]tiff.Group{
+		model: tiff.Group_IFD0, // Model belongs to the first IFD (aka IFD#0)
+		// ...
+	})
+
+	entries, err = p.Parse(model)
+	if err != nil {
+		panic(err)
 	}
 
 	fmt.Println("model", entries[model].Value.String)
