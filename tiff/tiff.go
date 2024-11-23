@@ -61,12 +61,12 @@ func (p *Parser) Parse(ids ...EntryID) (map[EntryID]Entry, error) {
 
 		if ok {
 			switch group {
-			case GroupIfd0:
+			case Group_IFD0:
 				ifd0Wanted.Put(id)
-			case GroupExif:
+			case Group_Exif:
 				ifd0Wanted.Put(Exif)
 				exifWanted.Put(id)
-			case GroupGPSInfo:
+			case Group_GPSInfo:
 				ifd0Wanted.Put(GPSInfo)
 				gpsInfoWanted.Put(id)
 			}
@@ -125,9 +125,9 @@ func readEndianness(buffer []byte) (binary.ByteOrder, error) {
 	// Note: the value of these 2 bytes is endianness-independent, so I can use any byte order to read them.
 	value := binary.LittleEndian.Uint16(buffer)
 	switch value {
-	case IntelByteOrder:
+	case intelByteOrder:
 		return binary.LittleEndian, nil
-	case MotorolaByteOrder:
+	case motorolaByteOrder:
 		return binary.BigEndian, nil
 	default:
 		return nil, fmt.Errorf("unknown endianness: 0x%X", value)
@@ -137,10 +137,10 @@ func readEndianness(buffer []byte) (binary.ByteOrder, error) {
 // validateMagicNumber validates the file type by checking that it conforms to one of the expected values
 func validateMagicNumber(byteOrder binary.ByteOrder, buffer []byte) error {
 	magicNumber := byteOrder.Uint16(buffer)
-	if magicNumber != MagicNumberBigEndian &&
-		magicNumber != MagicNumberLittleEndian &&
-		magicNumber != OrfMagicNumberBigEndian &&
-		magicNumber != OrfMagicNumberLittleEndian {
+	if magicNumber != magicNumberBigEndian &&
+		magicNumber != magicNumberLittleEndian &&
+		magicNumber != orfMagicNumberBigEndian &&
+		magicNumber != orfMagicNumberLittleEndian {
 		return fmt.Errorf("unknown magic number: 0x%X", magicNumber)
 	}
 	return nil
